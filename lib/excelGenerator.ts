@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { formatIsoAsDDMMYYYY } from "./dateUtils";
+import { classifyServicesAndTerm } from "./classifyServicesAndTerm";
 import type { ExtractedFields } from "./types";
 
 const SECTION_FILL: ExcelJS.Fill = {
@@ -73,6 +74,12 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   const sheet = workbook.addWorksheet("Checklist");
   sheet.columns = [{ width: LABEL_COL_WIDTH }, { width: VALUE_COL_WIDTH }];
 
+  const classification = classifyServicesAndTerm(extracted.services, {
+    initialTermEndDateDisplay: displayDate(extracted.initialTermEndDate) ?? "⚠ Pending signing date",
+    autoRenewal: extracted.autoRenewal,
+    terminationNoticePeriod: extracted.terminationNoticePeriod,
+  });
+
   // Title
   const titleRow = sheet.addRow(["Myanmar Incorporation Services — Contract Checklist", ""]);
   sheet.mergeCells(titleRow.number, 1, titleRow.number, 2);
@@ -96,9 +103,9 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
     : `${extracted.signingDate.raw || "(blank)"} — ⚠ NEEDS MANUAL REVIEW`;
   addLabelValueRow(sheet, "Signing Date", signingDateDisplay, { warn: !extracted.signingDate.valid });
   addLabelValueRow(sheet, "Contract Start Date", displayDate(extracted.contractStartDate) ?? "⚠ Pending signing date");
-  addLabelValueRow(sheet, "Initial Term End Date", displayDate(extracted.initialTermEndDate) ?? "⚠ Pending signing date");
-  addLabelValueRow(sheet, "Auto-Renewal", extracted.autoRenewal);
-  addLabelValueRow(sheet, "Termination Notice Period", extracted.terminationNoticePeriod);
+  addLabelValueRow(sheet, "Initial Term End Date", classification.initialTermEndDateDisplay);
+  addLabelValueRow(sheet, "Auto-Renewal", classification.autoRenewal);
+  addLabelValueRow(sheet, "Termination Notice Period", classification.terminationNoticePeriod);
   addLabelValueRow(sheet, "Invoice Due Date", displayDate(extracted.invoiceDueDate) ?? "⚠ Pending signing date");
   sheet.addRow([]);
 
@@ -132,20 +139,14 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   totalRow.getCell(1).border = { top: { style: "thin" } };
   totalRow.getCell(2).border = { top: { style: "thin" } };
 
-  const oneTimeServices = extracted.services.filter((s) => s.isOneTime);
-  const hasOneTime = oneTimeServices.length > 0;
-  addLabelValueRow(sheet, "One-Time Service(s)", hasOneTime ? "Yes" : "No");
-  addLabelValueRow(
-    sheet,
-    "One-Time Service Name(s)",
-    hasOneTime ? oneTimeServices.map((s) => s.name).join("; ") : "N/A"
-  );
-  const oneTimeAmountRow = addLabelValueRow(
-    sheet,
-    "One-Time Service Amount",
-    hasOneTime ? oneTimeServices.reduce((sum, s) => sum + s.amount, 0) : "N/A"
-  );
-  if (hasOneTime) {
+  addLabelValueRow(sheet, "One-Time Service(s)", classification.oneTimeService);
+  if (classification.showOneTimeDetails) {
+    addLabelValueRow(sheet, "One-Time Service Name(s)", classification.oneTimeServiceNames.join("; "));
+    const oneTimeAmountRow = addLabelValueRow(
+      sheet,
+      "One-Time Service Amount",
+      classification.oneTimeServiceAmount
+    );
     oneTimeAmountRow.getCell(2).numFmt = numFmt;
   }
   sheet.addRow([]);

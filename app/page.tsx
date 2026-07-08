@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { deriveContractFields } from "@/lib/deriveFields";
+import { classifyServicesAndTerm } from "@/lib/classifyServicesAndTerm";
 import { formatIsoAsDDMMYYYY } from "@/lib/dateUtils";
 import type { ExtractedFields } from "@/lib/types";
 
@@ -76,10 +77,6 @@ function mapExtractedToForm(extracted: ExtractedFields): FormState {
   };
 }
 
-function isOneTime(name: string): boolean {
-  return /\(one-time\)/i.test(name);
-}
-
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("upload");
   const [busy, setBusy] = useState<Busy>("idle");
@@ -147,10 +144,22 @@ export default function Home() {
     () => form.services.reduce((sum, s) => sum + (Number(s.amount) || 0), 0),
     [form.services]
   );
-  const oneTimeServices = useMemo(
-    () => form.services.filter((s) => isOneTime(s.name)),
-    [form.services]
+
+  const classification = useMemo(
+    () =>
+      classifyServicesAndTerm(
+        form.services.map((s) => ({ name: s.name, amount: Number(s.amount) || 0 })),
+        {
+          initialTermEndDateDisplay: derived.initialTermEndDate
+            ? formatIsoAsDDMMYYYY(derived.initialTermEndDate)
+            : "⚠ Pending valid signing date",
+          autoRenewal: derived.autoRenewal,
+          terminationNoticePeriod: derived.terminationNoticePeriod,
+        }
+      ),
+    [form.services, derived]
   );
+
   const attentionPersonEmailValid =
     form.attentionPersonEmail.trim() === "" || EMAIL_PATTERN.test(form.attentionPersonEmail.trim());
 
@@ -377,14 +386,13 @@ export default function Home() {
               />
               <ReadOnlyField
                 label="Initial Term End Date"
-                value={
-                  derived.initialTermEndDate
-                    ? formatIsoAsDDMMYYYY(derived.initialTermEndDate)
-                    : "⚠ Pending valid signing date"
-                }
+                value={classification.initialTermEndDateDisplay}
               />
-              <ReadOnlyField label="Auto-Renewal" value={derived.autoRenewal} />
-              <ReadOnlyField label="Termination Notice Period" value={derived.terminationNoticePeriod} />
+              <ReadOnlyField label="Auto-Renewal" value={classification.autoRenewal} />
+              <ReadOnlyField
+                label="Termination Notice Period"
+                value={classification.terminationNoticePeriod}
+              />
               <ReadOnlyField
                 label="Invoice Due Date"
                 value={
@@ -459,23 +467,19 @@ export default function Home() {
               </div>
 
               <div className="mt-3 space-y-1 text-sm">
-                <ReadOnlyField label="One-Time Service(s)" value={oneTimeServices.length > 0 ? "Yes" : "No"} />
-                <ReadOnlyField
-                  label="One-Time Service Name(s)"
-                  value={
-                    oneTimeServices.length > 0 ? oneTimeServices.map((s) => s.name).join("; ") : "N/A"
-                  }
-                />
-                <ReadOnlyField
-                  label="One-Time Service Amount"
-                  value={
-                    oneTimeServices.length > 0
-                      ? oneTimeServices
-                          .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
-                          .toLocaleString()
-                      : "N/A"
-                  }
-                />
+                <ReadOnlyField label="One-Time Service(s)" value={classification.oneTimeService} />
+                {classification.showOneTimeDetails && (
+                  <>
+                    <ReadOnlyField
+                      label="One-Time Service Name(s)"
+                      value={classification.oneTimeServiceNames.join("; ")}
+                    />
+                    <ReadOnlyField
+                      label="One-Time Service Amount"
+                      value={classification.oneTimeServiceAmount.toLocaleString()}
+                    />
+                  </>
+                )}
               </div>
             </SectionCard>
 

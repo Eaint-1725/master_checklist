@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTemplateStrategy, DEFAULT_TEMPLATE_ID } from "@/lib/templates/registry";
 import { deriveContractFields } from "@/lib/deriveFields";
 import { generateExcelChecklist, buildFilename } from "@/lib/excelGenerator";
-import type { ExtractedFields } from "@/lib/types";
+import type { AdditionalInvoicingDetails, ExtractedFields } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -15,13 +15,17 @@ interface GenerateRequestBody {
   proposalIssueDateRaw: string | null;
   currency: "USD" | "MMK" | null;
   services: { name: string; amount: number; currency: string }[];
-  additionalServices: string[];
+  additionalInvoicingDetails: AdditionalInvoicingDetails;
 }
 
 function isValidBody(body: unknown): body is GenerateRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  return Array.isArray(b.services) && Array.isArray(b.additionalServices);
+  return (
+    Array.isArray(b.services) &&
+    typeof b.additionalInvoicingDetails === "object" &&
+    b.additionalInvoicingDetails !== null
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   if (!isValidBody(body)) {
     return NextResponse.json(
-      { error: "Request body is missing required fields (services, additionalServices)." },
+      { error: "Request body is missing required fields (services, additionalInvoicingDetails)." },
       { status: 400 }
     );
   }
@@ -71,7 +75,7 @@ export async function POST(request: NextRequest) {
       stampDutyClauseApplicable: derived.stampDutyClauseApplicable,
 
       services,
-      additionalServices: body.additionalServices,
+      additionalInvoicingDetails: body.additionalInvoicingDetails,
 
       needsReview: derived.needsReview,
       reviewNotes: derived.reviewNotes,

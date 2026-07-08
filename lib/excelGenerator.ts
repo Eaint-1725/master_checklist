@@ -150,18 +150,17 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   }
   sheet.addRow([]);
 
-  // Section 5 — Additional Services (Informational)
-  addSectionHeader(sheet, "Additional Services (Informational)");
-  if (extracted.additionalServices.length > 0) {
-    for (const item of extracted.additionalServices) {
-      const row = sheet.addRow([item, ""]);
-      sheet.mergeCells(row.number, 1, row.number, 2);
-      row.getCell(1).font = { italic: true, color: { argb: "FF555555" } };
-    }
-  } else {
-    const row = sheet.addRow(["None listed in this proposal.", ""]);
-    sheet.mergeCells(row.number, 1, row.number, 2);
-    row.getCell(1).font = { italic: true, color: { argb: "FF555555" } };
+  // Section 5 — Additional Invoicing Details (manual entry)
+  addSectionHeader(sheet, "Additional Invoicing Details");
+  const invoicing = extracted.additionalInvoicingDetails;
+  addLabelValueRow(sheet, "Invoicing Entity", invoicing.invoicingEntity);
+  addLabelValueRow(sheet, "Invoicing Entity Address", invoicing.invoicingEntityAddress);
+  addLabelValueRow(sheet, "Attention Person", invoicing.attentionPerson);
+  addLabelValueRow(sheet, "Attention Person Email Address", invoicing.attentionPersonEmail);
+  addLabelValueRow(sheet, "Tax ID No.", invoicing.taxIdNo);
+  addLabelValueRow(sheet, "PO Process", invoicing.poProcess);
+  if (invoicing.poProcess === "Yes") {
+    addLabelValueRow(sheet, "PO Code No.", invoicing.poCodeNo);
   }
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();

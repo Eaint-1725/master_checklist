@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { extractPdfText } from "./pdfText";
 import { getTemplateStrategy, DEFAULT_TEMPLATE_ID } from "./templates/registry";
 import { deriveContractFields } from "./deriveFields";
-import type { ExtractedFields, RawExtractedFields } from "./types";
+import type { AdditionalInvoicingDetails, ExtractedFields, RawExtractedFields } from "./types";
 
 export class ExtractionError extends Error {}
 
@@ -41,11 +41,18 @@ function parseRawResponse(raw: string): RawExtractedFields {
     proposalIssueDateRaw: (obj.proposalIssueDateRaw as string) ?? null,
     currency: (obj.currency as "USD" | "MMK") ?? null,
     services: Array.isArray(obj.services) ? (obj.services as RawExtractedFields["services"]) : [],
-    additionalServices: Array.isArray(obj.additionalServices)
-      ? (obj.additionalServices as string[])
-      : [],
   };
 }
+
+const EMPTY_INVOICING_DETAILS: AdditionalInvoicingDetails = {
+  invoicingEntity: "",
+  invoicingEntityAddress: "",
+  attentionPerson: "",
+  attentionPersonEmail: "",
+  taxIdNo: "",
+  poProcess: "",
+  poCodeNo: "",
+};
 
 async function callOpenAI(prompt: string): Promise<string> {
   const openai = getClient();
@@ -130,7 +137,7 @@ export async function extractFields(
     stampDutyClauseApplicable: derived.stampDutyClauseApplicable,
 
     services,
-    additionalServices: raw.additionalServices,
+    additionalInvoicingDetails: EMPTY_INVOICING_DETAILS,
 
     needsReview: derived.needsReview,
     reviewNotes: derived.reviewNotes,

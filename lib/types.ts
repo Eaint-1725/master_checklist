@@ -18,7 +18,21 @@ export interface RawExtractedFields {
   proposalIssueDateRaw: string | null;
   currency: "USD" | "MMK" | null;
   services: { name: string; amount: number; currency: string }[];
-  additionalServices: string[];
+}
+
+/**
+ * Invoicing details entered by hand on the review screen — never extracted
+ * from the PDF. PO Code No. is only meaningful (and only rendered/exported)
+ * when poProcess is "Yes".
+ */
+export interface AdditionalInvoicingDetails {
+  invoicingEntity: string;
+  invoicingEntityAddress: string;
+  attentionPerson: string;
+  attentionPersonEmail: string;
+  taxIdNo: string;
+  poProcess: "Yes" | "No" | "";
+  poCodeNo: string;
 }
 
 export interface DateParseResult {
@@ -47,7 +61,7 @@ export interface ExtractedFields {
   stampDutyClauseApplicable: "Yes" | "No";
 
   services: ServiceLine[];
-  additionalServices: string[];
+  additionalInvoicingDetails: AdditionalInvoicingDetails;
 
   needsReview: boolean;
   reviewNotes: string[];

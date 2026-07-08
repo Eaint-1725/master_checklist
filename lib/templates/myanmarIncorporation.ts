@@ -10,16 +10,15 @@ const JSON_SCHEMA_DESCRIPTION = `Return ONLY a valid JSON object (no markdown, n
   "focusCorePreparerTitle": string | null,       // Title shown with the preparer, e.g. "General Manager"
   "clientSignerName": string | null,             // From "By: X" in the Client Acceptance / signature section
   "signingDateRaw": string | null,               // The exact raw text of "Date:" in the Client Acceptance section. null if blank/absent.
-  "proposalIssueDateRaw": string | null,         // The exact raw text of the proposal issue date at the top of page 1
+  "proposalIssueDateRaw": string | null,         // The date printed near the top of PAGE 1, just above/beside the "Background" heading (NOT the Client Acceptance "Date:" field). Often formatted with spaces around the slashes, e.g. "06 / 07 / 2026". Copy it exactly as printed, spaces included.
   "currency": "USD" | "MMK" | null,              // Infer from the Amount column in "Our Professional Fees": "USD" prefix means USD, "MMK" or "Ks" means MMK
   "services": [                                  // One entry for EVERY row in the "Our Professional Fees" table
     { "name": string, "amount": number, "currency": string }
-  ],
-  "additionalServices": string[]                 // Plain text names/descriptions of items listed under "Additional Services" (informational only, not purchased)
+  ]
 }
 
 Rules:
-- Do not invent values. If a field is not clearly present in the text, use null (or an empty array for services/additionalServices).
+- Do not invent values. If a field is not clearly present in the text, use null (or an empty array for services).
 - "amount" must be a plain number (no currency symbols, no thousands separators), e.g. 1500 or 2500000.
 - Preserve the exact wording of each service "name" as printed, including any "(one-time)" suffix if present — do not strip or paraphrase it.
 - signingDateRaw and proposalIssueDateRaw must be copied verbatim from the document (do not reformat or reinterpret the date yourself — a separate step handles date parsing).

@@ -23,7 +23,13 @@ interface FormState {
   proposalIssueDateRaw: string;
   currency: "USD" | "MMK" | "";
   services: ServiceRow[];
-  additionalServicesText: string;
+  invoicingEntity: string;
+  invoicingEntityAddress: string;
+  attentionPerson: string;
+  attentionPersonEmail: string;
+  taxIdNo: string;
+  poProcess: "Yes" | "No" | "";
+  poCodeNo: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -35,8 +41,16 @@ const EMPTY_FORM: FormState = {
   proposalIssueDateRaw: "",
   currency: "",
   services: [],
-  additionalServicesText: "",
+  invoicingEntity: "",
+  invoicingEntityAddress: "",
+  attentionPerson: "",
+  attentionPersonEmail: "",
+  taxIdNo: "",
+  poProcess: "",
+  poCodeNo: "",
 };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function mapExtractedToForm(extracted: ExtractedFields): FormState {
   return {
@@ -52,7 +66,13 @@ function mapExtractedToForm(extracted: ExtractedFields): FormState {
       amount: String(s.amount),
       currency: s.currency || "",
     })),
-    additionalServicesText: extracted.additionalServices.join("\n"),
+    invoicingEntity: extracted.additionalInvoicingDetails.invoicingEntity,
+    invoicingEntityAddress: extracted.additionalInvoicingDetails.invoicingEntityAddress,
+    attentionPerson: extracted.additionalInvoicingDetails.attentionPerson,
+    attentionPersonEmail: extracted.additionalInvoicingDetails.attentionPersonEmail,
+    taxIdNo: extracted.additionalInvoicingDetails.taxIdNo,
+    poProcess: extracted.additionalInvoicingDetails.poProcess,
+    poCodeNo: extracted.additionalInvoicingDetails.poCodeNo,
   };
 }
 
@@ -131,6 +151,8 @@ export default function Home() {
     () => form.services.filter((s) => isOneTime(s.name)),
     [form.services]
   );
+  const attentionPersonEmailValid =
+    form.attentionPersonEmail.trim() === "" || EMAIL_PATTERN.test(form.attentionPersonEmail.trim());
 
   const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -172,10 +194,15 @@ export default function Home() {
           amount: Number(s.amount) || 0,
           currency: s.currency || form.currency || "",
         })),
-        additionalServices: form.additionalServicesText
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean),
+        additionalInvoicingDetails: {
+          invoicingEntity: form.invoicingEntity,
+          invoicingEntityAddress: form.invoicingEntityAddress,
+          attentionPerson: form.attentionPerson,
+          attentionPersonEmail: form.attentionPersonEmail,
+          taxIdNo: form.taxIdNo,
+          poProcess: form.poProcess,
+          poCodeNo: form.poProcess === "Yes" ? form.poCodeNo : "",
+        },
       };
 
       const res = await fetch("/api/generate", {
@@ -452,17 +479,72 @@ export default function Home() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Additional Services (Informational)">
+            <SectionCard title="Additional Invoicing Details">
               <p className="mb-2 text-xs text-slate-500">
-                Listed for reference only — this template does not mark these as purchased.
+                Entered manually — none of these fields are extracted from the PDF.
               </p>
-              <textarea
-                value={form.additionalServicesText}
-                onChange={(e) => updateField("additionalServicesText", e.target.value)}
-                rows={4}
-                placeholder="One service per line"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-fc-red focus:outline-none focus:ring-1 focus:ring-fc-red"
+              <TextField
+                label="Invoicing Entity"
+                value={form.invoicingEntity}
+                onChange={(v) => updateField("invoicingEntity", v)}
               />
+              <TextField
+                label="Invoicing Entity Address"
+                value={form.invoicingEntityAddress}
+                onChange={(v) => updateField("invoicingEntityAddress", v)}
+              />
+              <TextField
+                label="Attention Person"
+                value={form.attentionPerson}
+                onChange={(v) => updateField("attentionPerson", v)}
+              />
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Attention Person Email Address
+                </label>
+                <input
+                  type="email"
+                  value={form.attentionPersonEmail}
+                  onChange={(e) => updateField("attentionPersonEmail", e.target.value)}
+                  placeholder="name@example.com"
+                  className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 ${
+                    attentionPersonEmailValid
+                      ? "border-slate-300 focus:border-fc-red focus:ring-fc-red"
+                      : "border-amber-400 bg-amber-50 focus:border-amber-500 focus:ring-amber-500"
+                  }`}
+                />
+                {!attentionPersonEmailValid && (
+                  <p className="mt-1 text-xs font-medium text-amber-700">
+                    ⚠ Enter a valid email address.
+                  </p>
+                )}
+              </div>
+              <TextField
+                label="Tax ID No."
+                value={form.taxIdNo}
+                onChange={(v) => updateField("taxIdNo", v)}
+              />
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  PO Process
+                </label>
+                <select
+                  value={form.poProcess}
+                  onChange={(e) => updateField("poProcess", e.target.value as "Yes" | "No" | "")}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-fc-red focus:outline-none focus:ring-1 focus:ring-fc-red"
+                >
+                  <option value="">— Select —</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              {form.poProcess === "Yes" && (
+                <TextField
+                  label="PO Code No."
+                  value={form.poCodeNo}
+                  onChange={(v) => updateField("poCodeNo", v)}
+                />
+              )}
             </SectionCard>
 
             {busy === "idle" && errorMessage && (

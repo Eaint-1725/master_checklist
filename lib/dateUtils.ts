@@ -48,11 +48,12 @@ function isoToYmd(iso: string): Ymd {
 /**
  * Parses a purely numeric date string as DD/MM/YYYY (day always first,
  * never MM/DD), e.g. "06/07/2026" or "6/7/2026". Accepts "/", "-", or "."
- * as the separator. Returns null if the string isn't a pure numeric date
- * or doesn't represent a real calendar day.
+ * as the separator, with optional whitespace around it (PDF text
+ * extraction often renders "06 / 07 / 2026"). Returns null if the string
+ * isn't a pure numeric date or doesn't represent a real calendar day.
  */
 export function parseNumericDateDDMMYYYY(input: string): Ymd | null {
-  const trimmed = input.trim();
+  const trimmed = input.trim().replace(/\s*([/.\-])\s*/g, "$1");
   const match = trimmed.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
   if (!match) return null;
   const day = Number(match[1]);

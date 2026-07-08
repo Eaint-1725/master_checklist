@@ -26,6 +26,12 @@ describe("parseNumericDateDDMMYYYY", () => {
     expect(parseNumericDateDDMMYYYY("06.07.2026")).toEqual({ year: 2026, month: 7, day: 6 });
   });
 
+  it("normalizes spaces around slashes before parsing", () => {
+    expect(parseNumericDateDDMMYYYY("06 / 07 / 2026")).toEqual({ year: 2026, month: 7, day: 6 });
+    expect(parseNumericDateDDMMYYYY("6 / 7 / 2026")).toEqual({ year: 2026, month: 7, day: 6 });
+    expect(parseNumericDateDDMMYYYY("06/ 07 /2026")).toEqual({ year: 2026, month: 7, day: 6 });
+  });
+
   it("rejects an impossible calendar date (e.g. day 31 in a 30-day month)", () => {
     expect(parseNumericDateDDMMYYYY("31/04/2026")).toBeNull();
   });

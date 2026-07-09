@@ -120,6 +120,16 @@ export function addYearsIso(iso: string, years: number): string {
   return ymdToIso({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() });
 }
 
+/**
+ * Adds N years and then subtracts one day. Used for term-end-date math,
+ * where the start date itself counts as "Day 1" of the term, so a naive
+ * "+N years" overcounts by one day — e.g. a 5-year term signed 09/07/2026
+ * ends 08/07/2031, not 09/07/2031.
+ */
+export function addYearsMinusOneDayIso(iso: string, years: number): string {
+  return addDaysIso(addYearsIso(iso, years), -1);
+}
+
 /** Formats an ISO (YYYY-MM-DD) date string as DD/MM/YYYY for display. */
 export function formatIsoAsDDMMYYYY(iso: string): string {
   const { year, month, day } = isoToYmd(iso);

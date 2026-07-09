@@ -5,6 +5,7 @@ import {
   parseFlexibleDate,
   addDaysIso,
   addYearsIso,
+  addYearsMinusOneDayIso,
   formatIsoAsDDMMYYYY,
 } from "./dateUtils";
 
@@ -118,13 +119,36 @@ describe("addDaysIso", () => {
 });
 
 describe("addYearsIso", () => {
-  it("adds 5 years for the initial term end date rule", () => {
+  it("adds 5 years with no day adjustment", () => {
     expect(addYearsIso("2026-07-06", 5)).toBe("2031-07-06");
   });
 
   it("handles a Feb 29 signing date in a leap year", () => {
     // 2028 is a leap year; +5 years lands on 2033, a non-leap year.
     expect(addYearsIso("2028-02-29", 5)).toBe("2033-03-01");
+  });
+});
+
+describe("addYearsMinusOneDayIso", () => {
+  it("adds 5 years then subtracts 1 day for the initial term end date rule", () => {
+    // Signing date counts as Day 1 of the term, so a naive +5 years
+    // overcounts by one day.
+    expect(addYearsMinusOneDayIso("2026-07-09", 5)).toBe("2031-07-08");
+  });
+
+  it("matches the documented example: 09/07/2026 -> 08/07/2031, not 09/07/2031", () => {
+    expect(addYearsMinusOneDayIso("2026-07-09", 5)).not.toBe("2031-07-09");
+    expect(addYearsMinusOneDayIso("2026-07-09", 5)).toBe("2031-07-08");
+  });
+
+  it("handles a Feb 29 signing date in a leap year", () => {
+    // Naive +5 years rolls Feb 29 -> Mar 1 (2033 is not a leap year);
+    // subtracting 1 day from that lands back on Feb 28.
+    expect(addYearsMinusOneDayIso("2028-02-29", 5)).toBe("2033-02-28");
+  });
+
+  it("rolls back over a month boundary", () => {
+    expect(addYearsMinusOneDayIso("2026-07-01", 5)).toBe("2031-06-30");
   });
 });
 

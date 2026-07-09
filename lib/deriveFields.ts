@@ -1,4 +1,4 @@
-import { parseFlexibleDate, addDaysIso, addYearsIso } from "./dateUtils";
+import { parseFlexibleDate, addDaysIso, addYearsMinusOneDayIso } from "./dateUtils";
 import {
   CONTRACT_TERMS,
   formatAutoRenewalText,
@@ -47,7 +47,7 @@ export function deriveContractFields(input: DeriveInput): DerivedContractFields 
 
   if (signingDate.valid && signingDate.iso) {
     contractStartDate = signingDate.iso;
-    initialTermEndDate = addYearsIso(signingDate.iso, CONTRACT_TERMS.initialTermYears);
+    initialTermEndDate = addYearsMinusOneDayIso(signingDate.iso, CONTRACT_TERMS.initialTermYears);
     invoiceDueDate = addDaysIso(signingDate.iso, CONTRACT_TERMS.invoiceDueDays);
   } else {
     reviewNotes.push(

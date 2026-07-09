@@ -4,6 +4,7 @@ import {
   formatAutoRenewalText,
   formatTerminationNoticeText,
   formatCommercialTaxText,
+  formatStampDutyFeeText,
 } from "./config/contractTerms";
 import type { DateParseResult } from "./types";
 
@@ -23,6 +24,8 @@ export interface DerivedContractFields {
   terminationNoticePeriod: string;
   commercialTax: string;
   stampDutyClauseApplicable: "Yes" | "No";
+  /** "USD 150" when the stamp duty clause applies (MMK contracts), otherwise null — this row is omitted entirely, not shown blank. */
+  stampDutyFee: string | null;
   needsReview: boolean;
   reviewNotes: string[];
 }
@@ -55,6 +58,7 @@ export function deriveContractFields(input: DeriveInput): DerivedContractFields 
   }
 
   const stampDutyClauseApplicable: "Yes" | "No" = input.currency === "MMK" ? "Yes" : "No";
+  const stampDutyFee = stampDutyClauseApplicable === "Yes" ? formatStampDutyFeeText() : null;
 
   return {
     signingDate,
@@ -66,6 +70,7 @@ export function deriveContractFields(input: DeriveInput): DerivedContractFields 
     terminationNoticePeriod: formatTerminationNoticeText(),
     commercialTax: formatCommercialTaxText(),
     stampDutyClauseApplicable,
+    stampDutyFee,
     needsReview: !signingDate.valid,
     reviewNotes,
   };

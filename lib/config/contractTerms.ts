@@ -8,6 +8,7 @@ export const CONTRACT_TERMS = {
   terminationNoticeDays: 60,
   invoiceDueDays: 14,
   commercialTaxRate: 0.05,
+  stampDutyFeeText: "USD 150",
 } as const;
 
 export function formatAutoRenewalText(): string {
@@ -20,4 +21,8 @@ export function formatTerminationNoticeText(): string {
 
 export function formatCommercialTaxText(): string {
   return `${CONTRACT_TERMS.commercialTaxRate * 100}%`;
+}
+
+export function formatStampDutyFeeText(): string {
+  return CONTRACT_TERMS.stampDutyFeeText;
 }

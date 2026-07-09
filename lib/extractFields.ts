@@ -41,6 +41,11 @@ function parseRawResponse(raw: string): RawExtractedFields {
     proposalIssueDateRaw: (obj.proposalIssueDateRaw as string) ?? null,
     currency: (obj.currency as "USD" | "MMK") ?? null,
     services: Array.isArray(obj.services) ? (obj.services as RawExtractedFields["services"]) : [],
+    specialNotes: Array.isArray(obj.specialNotes)
+      ? (obj.specialNotes as unknown[])
+          .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+          .map((s) => s.trim())
+      : [],
   };
 }
 
@@ -135,9 +140,11 @@ export async function extractFields(
     contractCurrency: raw.currency,
     commercialTax: derived.commercialTax,
     stampDutyClauseApplicable: derived.stampDutyClauseApplicable,
+    stampDutyFee: derived.stampDutyFee,
 
     services,
     additionalInvoicingDetails: EMPTY_INVOICING_DETAILS,
+    specialNotes: raw.specialNotes,
 
     needsReview: derived.needsReview,
     reviewNotes: derived.reviewNotes,

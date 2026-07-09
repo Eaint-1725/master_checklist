@@ -114,6 +114,9 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   addLabelValueRow(sheet, "Contract Currency", extracted.contractCurrency);
   addLabelValueRow(sheet, "Commercial Tax (5%)", extracted.commercialTax);
   addLabelValueRow(sheet, "Stamp Duty Clause Applicable", extracted.stampDutyClauseApplicable);
+  if (extracted.stampDutyClauseApplicable === "Yes") {
+    addLabelValueRow(sheet, "Additional Stamp Duty Fees", extracted.stampDutyFee);
+  }
   sheet.addRow([]);
 
   // Section 4 — Services Selected
@@ -162,6 +165,14 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   addLabelValueRow(sheet, "PO Process", invoicing.poProcess);
   if (invoicing.poProcess === "Yes") {
     addLabelValueRow(sheet, "PO Code No.", invoicing.poCodeNo);
+  }
+  if (extracted.specialNotes.length > 0) {
+    const specialInvoicingRow = addLabelValueRow(
+      sheet,
+      "Special Invoicing Rule",
+      extracted.specialNotes.join("\n")
+    );
+    specialInvoicingRow.getCell(2).alignment = { wrapText: true, vertical: "top" };
   }
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();

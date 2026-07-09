@@ -16,6 +16,7 @@ interface GenerateRequestBody {
   currency: "USD" | "MMK" | null;
   services: { name: string; amount: number; currency: string }[];
   additionalInvoicingDetails: AdditionalInvoicingDetails;
+  specialNotes?: string[];
 }
 
 function isValidBody(body: unknown): body is GenerateRequestBody {
@@ -73,9 +74,13 @@ export async function POST(request: NextRequest) {
       contractCurrency: body.currency,
       commercialTax: derived.commercialTax,
       stampDutyClauseApplicable: derived.stampDutyClauseApplicable,
+      stampDutyFee: derived.stampDutyFee,
 
       services,
       additionalInvoicingDetails: body.additionalInvoicingDetails,
+      specialNotes: Array.isArray(body.specialNotes)
+        ? body.specialNotes.filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+        : [],
 
       needsReview: derived.needsReview,
       reviewNotes: derived.reviewNotes,

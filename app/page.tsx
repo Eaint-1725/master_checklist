@@ -31,6 +31,7 @@ interface FormState {
   taxIdNo: string;
   poProcess: "Yes" | "No" | "";
   poCodeNo: string;
+  specialNotes: string[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -49,6 +50,7 @@ const EMPTY_FORM: FormState = {
   taxIdNo: "",
   poProcess: "",
   poCodeNo: "",
+  specialNotes: [],
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,6 +76,7 @@ function mapExtractedToForm(extracted: ExtractedFields): FormState {
     taxIdNo: extracted.additionalInvoicingDetails.taxIdNo,
     poProcess: extracted.additionalInvoicingDetails.poProcess,
     poCodeNo: extracted.additionalInvoicingDetails.poCodeNo,
+    specialNotes: extracted.specialNotes ?? [],
   };
 }
 
@@ -212,6 +215,7 @@ export default function Home() {
           poProcess: form.poProcess,
           poCodeNo: form.poProcess === "Yes" ? form.poCodeNo : "",
         },
+        specialNotes: form.specialNotes,
       };
 
       const res = await fetch("/api/generate", {
@@ -423,6 +427,12 @@ export default function Home() {
                 label="Stamp Duty Clause Applicable"
                 value={derived.stampDutyClauseApplicable}
               />
+              {derived.stampDutyClauseApplicable === "Yes" && (
+                <ReadOnlyField
+                  label="Additional Stamp Duty Fees"
+                  value={derived.stampDutyFee ?? ""}
+                />
+              )}
             </SectionCard>
 
             <SectionCard title="Services Selected">
@@ -549,6 +559,12 @@ export default function Home() {
                   onChange={(v) => updateField("poCodeNo", v)}
                 />
               )}
+              {form.specialNotes.length > 0 && (
+                <ReadOnlyField
+                  label="Special Invoicing Rule"
+                  value={form.specialNotes.join("\n")}
+                />
+              )}
             </SectionCard>
 
             {busy === "idle" && errorMessage && (
@@ -621,9 +637,9 @@ function TextField({
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-medium text-fc-dark">{value}</span>
+    <div className="flex items-start justify-between gap-4 rounded-md bg-slate-50 px-3 py-2 text-sm">
+      <span className="shrink-0 text-slate-500">{label}</span>
+      <span className="whitespace-pre-wrap text-right font-medium text-fc-dark">{value}</span>
     </div>
   );
 }

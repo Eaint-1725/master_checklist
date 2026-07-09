@@ -18,6 +18,8 @@ export interface RawExtractedFields {
   proposalIssueDateRaw: string | null;
   currency: "USD" | "MMK" | null;
   services: { name: string; amount: number; currency: string }[];
+  /** Paragraph(s) following any "Special Note"/"Special Rule" heading, one entry per section. Empty when absent (the normal case). */
+  specialNotes: string[];
 }
 
 /**
@@ -59,9 +61,13 @@ export interface ExtractedFields {
   contractCurrency: "USD" | "MMK" | null;
   commercialTax: string;
   stampDutyClauseApplicable: "Yes" | "No";
+  /** "USD 150" when the stamp duty clause applies, otherwise null — omit the row entirely, don't show blank. */
+  stampDutyFee: string | null;
 
   services: ServiceLine[];
   additionalInvoicingDetails: AdditionalInvoicingDetails;
+  /** Extracted "Special Note"/"Special Rule" paragraph(s), if any. Empty when none were found (the normal case). */
+  specialNotes: string[];
 
   needsReview: boolean;
   reviewNotes: string[];

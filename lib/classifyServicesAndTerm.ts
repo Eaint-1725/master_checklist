@@ -1,23 +1,34 @@
-// Determines the One-Time Service fields and the Contract Period/Terms
-// override based on which services were extracted from the contract.
+// Determines the One-Time Service(s) Yes/No field and the Contract Period/Terms
+// override, branching on which proposal template the contract is.
 //
-// The Myanmar Incorporation template has a fixed 5-service "baseline"
-// package. When a contract contains ONLY baseline services (a full or
-// partial subset of the 5), there is no ongoing engagement — the whole
-// thing is a one-time transaction, so the multi-year term fields (Initial
-// Term End Date, Auto-Renewal, Termination Notice Period) don't apply and
-// the One-Time Service Name(s)/Amount breakdown is meaningless (the whole
-// package is one-time, not a specific line item). Once ANY non-baseline
-// ("other") service is present — e.g. Visa Stay Permit, or any other
-// add-on — the engagement is ongoing, so the standard term fields apply
-// normally, and the One-Time breakdown narrows to just the non-baseline
-// one-time service(s), if any.
+// INCORPORATION: the Myanmar Incorporation template has a fixed 5-service
+// "baseline" package. When a contract contains ONLY baseline services (a
+// full or partial subset of the 5), there is no ongoing engagement — the
+// whole thing is a one-time transaction, so the multi-year term fields
+// (Initial Term End Date, Auto-Renewal, Termination Notice Period) don't
+// apply. Once ANY non-baseline ("other") service is present — e.g. Visa
+// Stay Permit, or any other add-on — the engagement is ongoing, so the
+// standard term fields apply normally, and One-Time Service(s) is Yes only
+// if one of those non-baseline services is itself a one-time service.
+//
+// VISA STAY PERMIT / AUDIT: always a one-time transaction regardless of
+// services present — One-Time Service(s) is always "Yes" and the term
+// fields are always "-".
+//
+// TAX COMPLIANCE: no baseline set. One-Time Service(s) is "Yes" iff any
+// service name contains "(one-time)"; when "No", term fields calculate
+// normally EXCEPT Auto-Renewal, which always displays "5 years" regardless
+// of the contract's actual extracted cycle (a fixed override specific to
+// this template).
+
+import type { TemplateType } from "./types";
 
 export interface ClassifiableService {
   name: string;
   amount: number;
 }
 
+/** The "if this were an ongoing engagement" display strings, precomputed by deriveFields.ts from the extracted per-contract term values. */
 export interface NormalTermFields {
   initialTermEndDateDisplay: string;
   autoRenewal: string;
@@ -26,17 +37,14 @@ export interface NormalTermFields {
 
 export interface ServiceTermClassification {
   oneTimeService: "Yes" | "No";
-  oneTimeServiceNames: string[];
-  oneTimeServiceAmount: number;
-  showOneTimeDetails: boolean;
   initialTermEndDateDisplay: string;
   autoRenewal: string;
   terminationNoticePeriod: string;
 }
 
 const NOT_APPLICABLE = "-";
-
 const ONE_TIME_PATTERN = /\(one-time\)/i;
+const TAX_COMPLIANCE_AUTO_RENEWAL = "5 years";
 
 // "Visa Stay Permit" is deliberately excluded — it's a common
 // incorporation-adjacent add-on but not part of the baseline package.
@@ -62,40 +70,90 @@ export function isBaselineService(name: string): boolean {
   return BASELINE_NORMALIZED.has(normalizeServiceName(name));
 }
 
-/**
- * Pure function: given the full extracted services list and the
- * normally-computed (signing-date-derived) term field displays, decides
- * the final One-Time Service and Contract Period/Terms fields.
- */
-export function classifyServicesAndTerm(
+function classifyIncorporation(
   services: ClassifiableService[],
-  normal: NormalTermFields
+  extractedTerms: NormalTermFields
 ): ServiceTermClassification {
   const otherServices = services.filter((s) => !isBaselineService(s.name));
   const isBaselineOnly = otherServices.length === 0;
+  const hasOtherOneTime = otherServices.some((s) => ONE_TIME_PATTERN.test(s.name));
 
-  if (isBaselineOnly) {
+  // The "-" override applies whenever the final One-Time Service(s) value
+  // is "Yes" — whether that Yes came from Case A (baseline services only)
+  // or Case B (a non-baseline one-time service was added) — not just Case A.
+  const oneTimeService: "Yes" | "No" = isBaselineOnly || hasOtherOneTime ? "Yes" : "No";
+
+  if (oneTimeService === "Yes") {
     return {
       oneTimeService: "Yes",
-      oneTimeServiceNames: [],
-      oneTimeServiceAmount: 0,
-      showOneTimeDetails: false,
       initialTermEndDateDisplay: NOT_APPLICABLE,
       autoRenewal: NOT_APPLICABLE,
       terminationNoticePeriod: NOT_APPLICABLE,
     };
   }
 
-  const otherOneTimeServices = otherServices.filter((s) => ONE_TIME_PATTERN.test(s.name));
-  const hasOtherOneTime = otherOneTimeServices.length > 0;
+  return {
+    oneTimeService: "No",
+    initialTermEndDateDisplay: extractedTerms.initialTermEndDateDisplay,
+    autoRenewal: extractedTerms.autoRenewal,
+    terminationNoticePeriod: extractedTerms.terminationNoticePeriod,
+  };
+}
+
+function classifyAlwaysOneTime(): ServiceTermClassification {
+  return {
+    oneTimeService: "Yes",
+    initialTermEndDateDisplay: NOT_APPLICABLE,
+    autoRenewal: NOT_APPLICABLE,
+    terminationNoticePeriod: NOT_APPLICABLE,
+  };
+}
+
+function classifyTaxCompliance(
+  services: ClassifiableService[],
+  extractedTerms: NormalTermFields
+): ServiceTermClassification {
+  const hasOneTime = services.some((s) => ONE_TIME_PATTERN.test(s.name));
+
+  if (hasOneTime) {
+    return {
+      oneTimeService: "Yes",
+      initialTermEndDateDisplay: NOT_APPLICABLE,
+      autoRenewal: NOT_APPLICABLE,
+      terminationNoticePeriod: NOT_APPLICABLE,
+    };
+  }
 
   return {
-    oneTimeService: hasOtherOneTime ? "Yes" : "No",
-    oneTimeServiceNames: otherOneTimeServices.map((s) => s.name),
-    oneTimeServiceAmount: otherOneTimeServices.reduce((sum, s) => sum + s.amount, 0),
-    showOneTimeDetails: hasOtherOneTime,
-    initialTermEndDateDisplay: normal.initialTermEndDateDisplay,
-    autoRenewal: normal.autoRenewal,
-    terminationNoticePeriod: normal.terminationNoticePeriod,
+    oneTimeService: "No",
+    initialTermEndDateDisplay: extractedTerms.initialTermEndDateDisplay,
+    autoRenewal: TAX_COMPLIANCE_AUTO_RENEWAL,
+    terminationNoticePeriod: extractedTerms.terminationNoticePeriod,
   };
+}
+
+/**
+ * Pure function: given the full extracted services list, the template
+ * type, and the normally-computed (signing-date-derived) term field
+ * displays, decides the final One-Time Service and Contract Period/Terms
+ * fields.
+ */
+export function classifyServicesAndTerm(
+  services: ClassifiableService[],
+  templateType: TemplateType,
+  extractedTerms: NormalTermFields
+): ServiceTermClassification {
+  switch (templateType) {
+    case "incorporation":
+      return classifyIncorporation(services, extractedTerms);
+    case "visa-stay-permit":
+    case "audit":
+      return classifyAlwaysOneTime();
+    case "tax-compliance":
+      return classifyTaxCompliance(services, extractedTerms);
+    default: {
+      const exhaustiveCheck: never = templateType;
+      throw new Error(`Unknown template type: ${exhaustiveCheck}`);
+    }
+  }
 }

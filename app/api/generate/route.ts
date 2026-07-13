@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTemplateStrategy, DEFAULT_TEMPLATE_ID } from "@/lib/templates/registry";
+import { getTemplateStrategy, isTemplateType } from "@/lib/templates/registry";
 import { deriveContractFields } from "@/lib/deriveFields";
 import { generateExcelChecklist, buildFilename } from "@/lib/excelGenerator";
-import type { AdditionalInvoicingDetails, ExtractedFields } from "@/lib/types";
+import type { AdditionalInvoicingDetails, ExtractedFields, TemplateType } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 interface GenerateRequestBody {
+  templateType: TemplateType;
   clientLegalEntityName: string | null;
   legalEntityAddress: string | null;
   focusCorePreparer: string | null;
   clientSignerName: string | null;
   signingDateRaw: string | null;
-  proposalIssueDateRaw: string | null;
   currency: "USD" | "MMK" | null;
+  invoiceDueRaw: string | null;
+  initialTermRaw: string | null;
+  terminationNoticeRaw: string | null;
+  autoRenewalCycleRaw: string | null;
   services: { name: string; amount: number; currency: string }[];
   additionalInvoicingDetails: AdditionalInvoicingDetails;
   specialNotes?: string[];
@@ -23,6 +27,7 @@ function isValidBody(body: unknown): body is GenerateRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
   return (
+    isTemplateType(b.templateType) &&
     Array.isArray(b.services) &&
     typeof b.additionalInvoicingDetails === "object" &&
     b.additionalInvoicingDetails !== null
@@ -39,7 +44,10 @@ export async function POST(request: NextRequest) {
 
   if (!isValidBody(body)) {
     return NextResponse.json(
-      { error: "Request body is missing required fields (services, additionalInvoicingDetails)." },
+      {
+        error:
+          "Request body is missing required fields (templateType, services, additionalInvoicingDetails).",
+      },
       { status: 400 }
     );
   }
@@ -49,27 +57,36 @@ export async function POST(request: NextRequest) {
     // authoritative, so any edits made on the review screen (e.g. a
     // corrected Signing Date, or a renamed service) are reflected correctly
     // rather than trusting whatever the client last displayed.
-    const strategy = getTemplateStrategy(DEFAULT_TEMPLATE_ID);
+    const strategy = getTemplateStrategy(body.templateType);
     const services = strategy.processServices(body.services);
     const derived = deriveContractFields({
       signingDateRaw: body.signingDateRaw,
-      proposalIssueDateRaw: body.proposalIssueDateRaw,
       currency: body.currency,
+      invoiceDueRaw: body.invoiceDueRaw,
+      initialTermRaw: body.initialTermRaw,
+      terminationNoticeRaw: body.terminationNoticeRaw,
+      autoRenewalCycleRaw: body.autoRenewalCycleRaw,
     });
 
     const extracted: ExtractedFields = {
+      templateType: body.templateType,
+
       clientLegalEntityName: body.clientLegalEntityName,
       legalEntityAddress: body.legalEntityAddress,
       focusCorePreparer: body.focusCorePreparer,
       clientSignerName: body.clientSignerName,
 
       signingDate: derived.signingDate,
-      proposalIssueDate: derived.proposalIssueDate,
       contractStartDate: derived.contractStartDate,
       initialTermEndDate: derived.initialTermEndDate,
       invoiceDueDate: derived.invoiceDueDate,
       autoRenewal: derived.autoRenewal,
       terminationNoticePeriod: derived.terminationNoticePeriod,
+
+      invoiceDueRaw: body.invoiceDueRaw,
+      initialTermRaw: body.initialTermRaw,
+      terminationNoticeRaw: body.terminationNoticeRaw,
+      autoRenewalCycleRaw: body.autoRenewalCycleRaw,
 
       contractCurrency: body.currency,
       commercialTax: derived.commercialTax,

@@ -1,8 +1,13 @@
 import OpenAI from "openai";
 import { extractPdfText } from "./pdfText";
-import { getTemplateStrategy, DEFAULT_TEMPLATE_ID } from "./templates/registry";
+import { getTemplateStrategy, DEFAULT_TEMPLATE_TYPE } from "./templates/registry";
 import { deriveContractFields } from "./deriveFields";
-import type { AdditionalInvoicingDetails, ExtractedFields, RawExtractedFields } from "./types";
+import type {
+  AdditionalInvoicingDetails,
+  ExtractedFields,
+  RawExtractedFields,
+  TemplateType,
+} from "./types";
 
 export class ExtractionError extends Error {}
 
@@ -38,8 +43,11 @@ function parseRawResponse(raw: string): RawExtractedFields {
     focusCorePreparerTitle: (obj.focusCorePreparerTitle as string) ?? null,
     clientSignerName: (obj.clientSignerName as string) ?? null,
     signingDateRaw: (obj.signingDateRaw as string) ?? null,
-    proposalIssueDateRaw: (obj.proposalIssueDateRaw as string) ?? null,
     currency: (obj.currency as "USD" | "MMK") ?? null,
+    invoiceDueRaw: (obj.invoiceDueRaw as string) ?? null,
+    initialTermRaw: (obj.initialTermRaw as string) ?? null,
+    terminationNoticeRaw: (obj.terminationNoticeRaw as string) ?? null,
+    autoRenewalCycleRaw: (obj.autoRenewalCycleRaw as string) ?? null,
     services: Array.isArray(obj.services) ? (obj.services as RawExtractedFields["services"]) : [],
     specialNotes: Array.isArray(obj.specialNotes)
       ? (obj.specialNotes as unknown[])
@@ -84,9 +92,9 @@ function combinePreparer(name: string | null, title: string | null): string | nu
 
 export async function extractFields(
   pdfBuffer: Buffer,
-  templateId: string = DEFAULT_TEMPLATE_ID
+  templateType: TemplateType = DEFAULT_TEMPLATE_TYPE
 ): Promise<ExtractedFields> {
-  const strategy = getTemplateStrategy(templateId);
+  const strategy = getTemplateStrategy(templateType);
   const pdfText = await extractPdfText(pdfBuffer);
   if (!pdfText || !pdfText.trim()) {
     throw new ExtractionError(
@@ -119,23 +127,32 @@ export async function extractFields(
   const services = strategy.processServices(raw.services);
   const derived = deriveContractFields({
     signingDateRaw: raw.signingDateRaw,
-    proposalIssueDateRaw: raw.proposalIssueDateRaw,
     currency: raw.currency,
+    invoiceDueRaw: raw.invoiceDueRaw,
+    initialTermRaw: raw.initialTermRaw,
+    terminationNoticeRaw: raw.terminationNoticeRaw,
+    autoRenewalCycleRaw: raw.autoRenewalCycleRaw,
   });
 
   return {
+    templateType,
+
     clientLegalEntityName: raw.clientLegalEntityName,
     legalEntityAddress: raw.legalEntityAddress,
     focusCorePreparer: combinePreparer(raw.focusCorePreparerName, raw.focusCorePreparerTitle),
     clientSignerName: raw.clientSignerName,
 
     signingDate: derived.signingDate,
-    proposalIssueDate: derived.proposalIssueDate,
     contractStartDate: derived.contractStartDate,
     initialTermEndDate: derived.initialTermEndDate,
     invoiceDueDate: derived.invoiceDueDate,
     autoRenewal: derived.autoRenewal,
     terminationNoticePeriod: derived.terminationNoticePeriod,
+
+    invoiceDueRaw: raw.invoiceDueRaw,
+    initialTermRaw: raw.initialTermRaw,
+    terminationNoticeRaw: raw.terminationNoticeRaw,
+    autoRenewalCycleRaw: raw.autoRenewalCycleRaw,
 
     contractCurrency: raw.currency,
     commercialTax: derived.commercialTax,

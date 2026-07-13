@@ -35,13 +35,10 @@ describe("isBaselineService", () => {
   });
 });
 
-describe("classifyServicesAndTerm", () => {
-  it("Case A — all 5 baseline services: one-time Yes, no name/amount, term fields are '-'", () => {
-    const result = classifyServicesAndTerm(BASELINE_5, NORMAL);
+describe("classifyServicesAndTerm — incorporation", () => {
+  it("Case A — all 5 baseline services: one-time Yes, term fields are '-'", () => {
+    const result = classifyServicesAndTerm(BASELINE_5, "incorporation", NORMAL);
     expect(result.oneTimeService).toBe("Yes");
-    expect(result.showOneTimeDetails).toBe(false);
-    expect(result.oneTimeServiceNames).toEqual([]);
-    expect(result.oneTimeServiceAmount).toBe(0);
     expect(result.initialTermEndDateDisplay).toBe("-");
     expect(result.autoRenewal).toBe("-");
     expect(result.terminationNoticePeriod).toBe("-");
@@ -49,9 +46,8 @@ describe("classifyServicesAndTerm", () => {
 
   it("Case A — subset missing Bank Account Setup: still baseline-only", () => {
     const subset = BASELINE_5.filter((s) => s.name !== "Bank Account Setup (per bank)");
-    const result = classifyServicesAndTerm(subset, NORMAL);
+    const result = classifyServicesAndTerm(subset, "incorporation", NORMAL);
     expect(result.oneTimeService).toBe("Yes");
-    expect(result.showOneTimeDetails).toBe(false);
     expect(result.initialTermEndDateDisplay).toBe("-");
     expect(result.autoRenewal).toBe("-");
     expect(result.terminationNoticePeriod).toBe("-");
@@ -59,41 +55,120 @@ describe("classifyServicesAndTerm", () => {
 
   it("Case B — Visa Stay Permit added (not one-time): One-Time = No, term fields normal", () => {
     const services = [...BASELINE_5, { name: "Visa Stay Permit", amount: 300 }];
-    const result = classifyServicesAndTerm(services, NORMAL);
+    const result = classifyServicesAndTerm(services, "incorporation", NORMAL);
     expect(result.oneTimeService).toBe("No");
-    expect(result.showOneTimeDetails).toBe(false);
-    expect(result.oneTimeServiceNames).toEqual([]);
-    expect(result.oneTimeServiceAmount).toBe(0);
     expect(result.initialTermEndDateDisplay).toBe(NORMAL.initialTermEndDateDisplay);
     expect(result.autoRenewal).toBe(NORMAL.autoRenewal);
     expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);
   });
 
-  it("Case B — an 'other' one-time service added: One-Time = Yes, name/amount shown for that service only", () => {
+  it("Case B — an 'other' one-time service added: One-Time = Yes AND term fields are '-' (not calculated)", () => {
     const services = [...BASELINE_5, { name: "Visa Stay Permit (one-time)", amount: 300 }];
-    const result = classifyServicesAndTerm(services, NORMAL);
+    const result = classifyServicesAndTerm(services, "incorporation", NORMAL);
     expect(result.oneTimeService).toBe("Yes");
-    expect(result.showOneTimeDetails).toBe(true);
-    expect(result.oneTimeServiceNames).toEqual(["Visa Stay Permit (one-time)"]);
-    expect(result.oneTimeServiceAmount).toBe(300);
-    expect(result.initialTermEndDateDisplay).toBe(NORMAL.initialTermEndDateDisplay);
-    expect(result.autoRenewal).toBe(NORMAL.autoRenewal);
-    expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
   });
 
-  it("Case B — both a one-time and non-one-time 'other' service present: only the one-time other is named", () => {
+  it("Case B — both a one-time and non-one-time 'other' service present: One-Time = Yes AND term fields are '-'", () => {
     const services = [
       ...BASELINE_5,
       { name: "Visa Stay Permit", amount: 300 },
       { name: "Office Address Service (one-time)", amount: 150 },
     ];
-    const result = classifyServicesAndTerm(services, NORMAL);
+    const result = classifyServicesAndTerm(services, "incorporation", NORMAL);
     expect(result.oneTimeService).toBe("Yes");
-    expect(result.showOneTimeDetails).toBe(true);
-    expect(result.oneTimeServiceNames).toEqual(["Office Address Service (one-time)"]);
-    expect(result.oneTimeServiceAmount).toBe(150);
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+
+  it("Case B — baseline services plus a non-baseline one-time add-on (e.g. Xero set-up): One-Time = Yes AND all three term fields are '-'", () => {
+    const services = [...BASELINE_5, { name: "Xero set-up (one-time)", amount: 550 }];
+    const result = classifyServicesAndTerm(services, "incorporation", NORMAL);
+    expect(result.oneTimeService).toBe("Yes");
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+});
+
+describe.each(["visa-stay-permit", "audit"] as const)("classifyServicesAndTerm — %s", (templateType) => {
+  it("is always One-Time = Yes with '-' term fields, even for baseline-looking services", () => {
+    const result = classifyServicesAndTerm(BASELINE_5, templateType, NORMAL);
+    expect(result.oneTimeService).toBe("Yes");
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+
+  it("is always One-Time = Yes with '-' term fields for a non-baseline, non-one-time service", () => {
+    const result = classifyServicesAndTerm(
+      [{ name: "Visa Stay Permit", amount: 300 }],
+      templateType,
+      NORMAL
+    );
+    expect(result.oneTimeService).toBe("Yes");
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+
+  it("is always One-Time = Yes with '-' term fields for an explicitly one-time service", () => {
+    const result = classifyServicesAndTerm(
+      [{ name: "Visa Stay Permit (one-time)", amount: 300 }],
+      templateType,
+      NORMAL
+    );
+    expect(result.oneTimeService).toBe("Yes");
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+
+  it("is always One-Time = Yes with '-' term fields even with an empty services list", () => {
+    const result = classifyServicesAndTerm([], templateType, NORMAL);
+    expect(result.oneTimeService).toBe("Yes");
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+});
+
+describe("classifyServicesAndTerm — tax-compliance", () => {
+  it("One-Time = Yes and term fields are '-' when a service is marked (one-time)", () => {
+    const services = [{ name: "Tax Health Check (one-time)", amount: 400 }];
+    const result = classifyServicesAndTerm(services, "tax-compliance", NORMAL);
+    expect(result.oneTimeService).toBe("Yes");
+    expect(result.initialTermEndDateDisplay).toBe("-");
+    expect(result.autoRenewal).toBe("-");
+    expect(result.terminationNoticePeriod).toBe("-");
+  });
+
+  it("One-Time = No and term fields calculate normally when no service is (one-time)", () => {
+    const services = [{ name: "Monthly Tax Filing", amount: 200 }];
+    const result = classifyServicesAndTerm(services, "tax-compliance", NORMAL);
+    expect(result.oneTimeService).toBe("No");
     expect(result.initialTermEndDateDisplay).toBe(NORMAL.initialTermEndDateDisplay);
-    expect(result.autoRenewal).toBe(NORMAL.autoRenewal);
     expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);
+  });
+
+  it("Auto-Renewal always displays '5 years', overriding the extracted cycle, when One-Time = No", () => {
+    const services = [{ name: "Monthly Tax Filing", amount: 200 }];
+    // NORMAL.autoRenewal is "Yes, 2-year cycles" — prove the override actually fires
+    // rather than coincidentally matching.
+    const result = classifyServicesAndTerm(services, "tax-compliance", NORMAL);
+    expect(result.autoRenewal).toBe("5 years");
+    expect(result.autoRenewal).not.toBe(NORMAL.autoRenewal);
+  });
+
+  it("Auto-Renewal is still '5 years' regardless of what the extracted cycle display says", () => {
+    const services = [{ name: "Monthly Tax Filing", amount: 200 }];
+    const result = classifyServicesAndTerm(services, "tax-compliance", {
+      ...NORMAL,
+      autoRenewal: "Yes, 3-year cycles",
+    });
+    expect(result.autoRenewal).toBe("5 years");
   });
 });

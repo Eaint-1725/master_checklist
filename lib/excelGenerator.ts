@@ -1,7 +1,12 @@
 import ExcelJS from "exceljs";
 import { formatIsoAsDDMMYYYY } from "./dateUtils";
 import { classifyServicesAndTerm } from "./classifyServicesAndTerm";
+import { TEMPLATE_OPTIONS } from "./templates/registry";
 import type { ExtractedFields } from "./types";
+
+function templateLabel(extracted: ExtractedFields): string {
+  return TEMPLATE_OPTIONS.find((t) => t.value === extracted.templateType)?.label ?? "Contract";
+}
 
 const SECTION_FILL: ExcelJS.Fill = {
   type: "pattern",
@@ -74,14 +79,21 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   const sheet = workbook.addWorksheet("Checklist");
   sheet.columns = [{ width: LABEL_COL_WIDTH }, { width: VALUE_COL_WIDTH }];
 
-  const classification = classifyServicesAndTerm(extracted.services, {
-    initialTermEndDateDisplay: displayDate(extracted.initialTermEndDate) ?? "⚠ Pending signing date",
+  const initialTermEndDateDisplay =
+    displayDate(extracted.initialTermEndDate) ??
+    (extracted.signingDate.valid ? "⚠ Could not extract initial term length" : "⚠ Pending signing date");
+  const invoiceDueDateDisplay =
+    displayDate(extracted.invoiceDueDate) ??
+    (extracted.signingDate.valid ? "⚠ Could not extract invoice due period" : "⚠ Pending signing date");
+
+  const classification = classifyServicesAndTerm(extracted.services, extracted.templateType, {
+    initialTermEndDateDisplay,
     autoRenewal: extracted.autoRenewal,
     terminationNoticePeriod: extracted.terminationNoticePeriod,
   });
 
   // Title
-  const titleRow = sheet.addRow(["Myanmar Incorporation Services — Contract Checklist", ""]);
+  const titleRow = sheet.addRow([`${templateLabel(extracted)} — Contract Checklist`, ""]);
   sheet.mergeCells(titleRow.number, 1, titleRow.number, 2);
   titleRow.eachCell((cell) => {
     cell.font = TITLE_FONT;
@@ -106,7 +118,7 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   addLabelValueRow(sheet, "Initial Term End Date", classification.initialTermEndDateDisplay);
   addLabelValueRow(sheet, "Auto-Renewal", classification.autoRenewal);
   addLabelValueRow(sheet, "Termination Notice Period", classification.terminationNoticePeriod);
-  addLabelValueRow(sheet, "Invoice Due Date", displayDate(extracted.invoiceDueDate) ?? "⚠ Pending signing date");
+  addLabelValueRow(sheet, "Invoice Due Date", invoiceDueDateDisplay);
   sheet.addRow([]);
 
   // Section 3 — Financial Terms
@@ -143,15 +155,6 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   totalRow.getCell(2).border = { top: { style: "thin" } };
 
   addLabelValueRow(sheet, "One-Time Service(s)", classification.oneTimeService);
-  if (classification.showOneTimeDetails) {
-    addLabelValueRow(sheet, "One-Time Service Name(s)", classification.oneTimeServiceNames.join("; "));
-    const oneTimeAmountRow = addLabelValueRow(
-      sheet,
-      "One-Time Service Amount",
-      classification.oneTimeServiceAmount
-    );
-    oneTimeAmountRow.getCell(2).numFmt = numFmt;
-  }
   sheet.addRow([]);
 
   // Section 5 — Additional Invoicing Details (manual entry)

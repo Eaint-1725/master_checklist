@@ -4,7 +4,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { deriveContractFields } from "@/lib/deriveFields";
 import { classifyServicesAndTerm } from "@/lib/classifyServicesAndTerm";
 import { formatIsoAsDDMMYYYY } from "@/lib/dateUtils";
-import type { ExtractedFields } from "@/lib/types";
+import { TEMPLATE_OPTIONS } from "@/lib/templates/registry";
+import type { ExtractedFields, TemplateType } from "@/lib/types";
 
 type Phase = "upload" | "review";
 type Busy = "idle" | "extracting" | "generating";
@@ -16,13 +17,17 @@ interface ServiceRow {
 }
 
 interface FormState {
+  templateType: TemplateType;
   clientLegalEntityName: string;
   legalEntityAddress: string;
   focusCorePreparer: string;
   clientSignerName: string;
   signingDateRaw: string;
-  proposalIssueDateRaw: string;
   currency: "USD" | "MMK" | "";
+  invoiceDueRaw: string;
+  initialTermRaw: string;
+  terminationNoticeRaw: string;
+  autoRenewalCycleRaw: string;
   services: ServiceRow[];
   invoicingEntity: string;
   invoicingEntityAddress: string;
@@ -35,13 +40,17 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
+  templateType: "incorporation",
   clientLegalEntityName: "",
   legalEntityAddress: "",
   focusCorePreparer: "",
   clientSignerName: "",
   signingDateRaw: "",
-  proposalIssueDateRaw: "",
   currency: "",
+  invoiceDueRaw: "",
+  initialTermRaw: "",
+  terminationNoticeRaw: "",
+  autoRenewalCycleRaw: "",
   services: [],
   invoicingEntity: "",
   invoicingEntityAddress: "",
@@ -57,13 +66,17 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function mapExtractedToForm(extracted: ExtractedFields): FormState {
   return {
+    templateType: extracted.templateType,
     clientLegalEntityName: extracted.clientLegalEntityName ?? "",
     legalEntityAddress: extracted.legalEntityAddress ?? "",
     focusCorePreparer: extracted.focusCorePreparer ?? "",
     clientSignerName: extracted.clientSignerName ?? "",
     signingDateRaw: extracted.signingDate.raw ?? "",
-    proposalIssueDateRaw: extracted.proposalIssueDate.raw ?? "",
     currency: (extracted.contractCurrency as "USD" | "MMK" | null) ?? "",
+    invoiceDueRaw: extracted.invoiceDueRaw ?? "",
+    initialTermRaw: extracted.initialTermRaw ?? "",
+    terminationNoticeRaw: extracted.terminationNoticeRaw ?? "",
+    autoRenewalCycleRaw: extracted.autoRenewalCycleRaw ?? "",
     services: extracted.services.map((s) => ({
       name: s.name,
       amount: String(s.amount),
@@ -116,6 +129,7 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("templateType", form.templateType);
       const res = await fetch("/api/extract", { method: "POST", body: formData });
 
       if (!res.ok) {
@@ -131,16 +145,26 @@ export default function Home() {
       setBusy("idle");
       setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
     }
-  }, [file]);
+  }, [file, form.templateType]);
 
   const derived = useMemo(
     () =>
       deriveContractFields({
         signingDateRaw: form.signingDateRaw || null,
-        proposalIssueDateRaw: form.proposalIssueDateRaw || null,
         currency: form.currency || null,
+        invoiceDueRaw: form.invoiceDueRaw || null,
+        initialTermRaw: form.initialTermRaw || null,
+        terminationNoticeRaw: form.terminationNoticeRaw || null,
+        autoRenewalCycleRaw: form.autoRenewalCycleRaw || null,
       }),
-    [form.signingDateRaw, form.proposalIssueDateRaw, form.currency]
+    [
+      form.signingDateRaw,
+      form.currency,
+      form.invoiceDueRaw,
+      form.initialTermRaw,
+      form.terminationNoticeRaw,
+      form.autoRenewalCycleRaw,
+    ]
   );
 
   const total = useMemo(
@@ -148,19 +172,30 @@ export default function Home() {
     [form.services]
   );
 
+  const initialTermEndDateDisplay = derived.initialTermEndDate
+    ? formatIsoAsDDMMYYYY(derived.initialTermEndDate)
+    : derived.signingDate.valid
+      ? "⚠ Could not extract initial term length"
+      : "⚠ Pending valid signing date";
+
+  const invoiceDueDateDisplay = derived.invoiceDueDate
+    ? formatIsoAsDDMMYYYY(derived.invoiceDueDate)
+    : derived.signingDate.valid
+      ? "⚠ Could not extract invoice due period"
+      : "⚠ Pending valid signing date";
+
   const classification = useMemo(
     () =>
       classifyServicesAndTerm(
         form.services.map((s) => ({ name: s.name, amount: Number(s.amount) || 0 })),
+        form.templateType,
         {
-          initialTermEndDateDisplay: derived.initialTermEndDate
-            ? formatIsoAsDDMMYYYY(derived.initialTermEndDate)
-            : "⚠ Pending valid signing date",
+          initialTermEndDateDisplay,
           autoRenewal: derived.autoRenewal,
           terminationNoticePeriod: derived.terminationNoticePeriod,
         }
       ),
-    [form.services, derived]
+    [form.services, form.templateType, initialTermEndDateDisplay, derived.autoRenewal, derived.terminationNoticePeriod]
   );
 
   const attentionPersonEmailValid =
@@ -194,13 +229,17 @@ export default function Home() {
 
     try {
       const body = {
+        templateType: form.templateType,
         clientLegalEntityName: form.clientLegalEntityName || null,
         legalEntityAddress: form.legalEntityAddress || null,
         focusCorePreparer: form.focusCorePreparer || null,
         clientSignerName: form.clientSignerName || null,
         signingDateRaw: form.signingDateRaw || null,
-        proposalIssueDateRaw: form.proposalIssueDateRaw || null,
         currency: form.currency || null,
+        invoiceDueRaw: form.invoiceDueRaw || null,
+        initialTermRaw: form.initialTermRaw || null,
+        terminationNoticeRaw: form.terminationNoticeRaw || null,
+        autoRenewalCycleRaw: form.autoRenewalCycleRaw || null,
         services: form.services.map((s) => ({
           name: s.name,
           amount: Number(s.amount) || 0,
@@ -271,7 +310,24 @@ export default function Home() {
         {phase === "upload" && (
           <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <label className="mb-2 block text-sm font-medium text-fc-dark">
-              Step 1 — Upload Signed PDF
+              Step 1 — Select Template Type
+            </label>
+            <select
+              value={form.templateType}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, templateType: e.target.value as TemplateType }))
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-fc-red focus:outline-none focus:ring-1 focus:ring-fc-red"
+            >
+              {TEMPLATE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            <label className="mb-2 mt-4 block text-sm font-medium text-fc-dark">
+              Step 2 — Upload Signed PDF
             </label>
             <div
               onDragOver={(e) => {
@@ -375,11 +431,6 @@ export default function Home() {
                   </p>
                 )}
               </div>
-              <TextField
-                label="Proposal Issue Date (as printed)"
-                value={form.proposalIssueDateRaw}
-                onChange={(v) => updateField("proposalIssueDateRaw", v)}
-              />
               <ReadOnlyField
                 label="Contract Start Date"
                 value={
@@ -397,14 +448,7 @@ export default function Home() {
                 label="Termination Notice Period"
                 value={classification.terminationNoticePeriod}
               />
-              <ReadOnlyField
-                label="Invoice Due Date"
-                value={
-                  derived.invoiceDueDate
-                    ? formatIsoAsDDMMYYYY(derived.invoiceDueDate)
-                    : "⚠ Pending valid signing date"
-                }
-              />
+              <ReadOnlyField label="Invoice Due Date" value={invoiceDueDateDisplay} />
             </SectionCard>
 
             <SectionCard title="Financial Terms">
@@ -478,18 +522,6 @@ export default function Home() {
 
               <div className="mt-3 space-y-1 text-sm">
                 <ReadOnlyField label="One-Time Service(s)" value={classification.oneTimeService} />
-                {classification.showOneTimeDetails && (
-                  <>
-                    <ReadOnlyField
-                      label="One-Time Service Name(s)"
-                      value={classification.oneTimeServiceNames.join("; ")}
-                    />
-                    <ReadOnlyField
-                      label="One-Time Service Amount"
-                      value={classification.oneTimeServiceAmount.toLocaleString()}
-                    />
-                  </>
-                )}
               </div>
             </SectionCard>
 

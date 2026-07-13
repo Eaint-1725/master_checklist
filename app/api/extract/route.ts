@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractFields, ExtractionError } from "@/lib/extractFields";
+import { DEFAULT_TEMPLATE_TYPE, isTemplateType } from "@/lib/templates/registry";
 
 export const runtime = "nodejs";
 
@@ -19,11 +20,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Only PDF files are supported." }, { status: 400 });
   }
 
+  const templateTypeRaw = formData.get("templateType");
+  let templateType = DEFAULT_TEMPLATE_TYPE;
+  if (templateTypeRaw !== null) {
+    if (!isTemplateType(templateTypeRaw)) {
+      return NextResponse.json({ error: "Unknown template type." }, { status: 400 });
+    }
+    templateType = templateTypeRaw;
+  }
+
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
   try {
-    const extracted = await extractFields(buffer);
+    const extracted = await extractFields(buffer, templateType);
     return NextResponse.json(extracted, { status: 200 });
   } catch (err) {
     const message =

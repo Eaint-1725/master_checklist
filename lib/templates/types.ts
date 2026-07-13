@@ -1,4 +1,4 @@
-import type { RawExtractedFields, ServiceLine } from "../types";
+import type { RawExtractedFields, ServiceLine, TemplateType } from "../types";
 
 /**
  * A template strategy encapsulates everything that varies between contract
@@ -11,7 +11,7 @@ import type { RawExtractedFields, ServiceLine } from "../types";
  * mark-detection logic instead, without touching any other part of the app.
  */
 export interface TemplateStrategy {
-  id: string;
+  id: TemplateType;
   label: string;
 
   /** Builds the full extraction prompt (instructions + schema) given raw PDF text. */

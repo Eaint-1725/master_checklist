@@ -17,9 +17,9 @@
 //
 // TAX COMPLIANCE: no baseline set. One-Time Service(s) is "Yes" iff any
 // service name contains "(one-time)"; when "No", term fields calculate
-// normally EXCEPT Auto-Renewal, which always displays "5 years" regardless
-// of the contract's actual extracted cycle (a fixed override specific to
-// this template).
+// normally EXCEPT Auto-Renewal, which always displays "Yes, 5 years cycle"
+// regardless of the contract's actual extracted cycle (a fixed override
+// specific to this template).
 
 import type { TemplateType } from "./types";
 
@@ -44,7 +44,7 @@ export interface ServiceTermClassification {
 
 const NOT_APPLICABLE = "-";
 const ONE_TIME_PATTERN = /\(one-time\)/i;
-const TAX_COMPLIANCE_AUTO_RENEWAL = "5 years";
+const TAX_COMPLIANCE_AUTO_RENEWAL = "Yes, 5 years cycle";
 
 // "Visa Stay Permit" is deliberately excluded — it's a common
 // incorporation-adjacent add-on but not part of the baseline package.

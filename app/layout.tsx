@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Myanmar Incorporation Extractor",
+  title: "Client Master Checklist Extractor",
   description:
-    "Extract key data from signed Myanmar Incorporation Services Proposal contracts into a structured Excel checklist.",
+    "Extract key data from signed FocusCore service proposal contracts into a structured Excel checklist.",
 };
 
 export default function RootLayout({

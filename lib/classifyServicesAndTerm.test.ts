@@ -154,21 +154,21 @@ describe("classifyServicesAndTerm — tax-compliance", () => {
     expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);
   });
 
-  it("Auto-Renewal always displays '5 years', overriding the extracted cycle, when One-Time = No", () => {
+  it("Auto-Renewal always displays 'Yes, 5 years cycle', overriding the extracted cycle, when One-Time = No", () => {
     const services = [{ name: "Monthly Tax Filing", amount: 200 }];
     // NORMAL.autoRenewal is "Yes, 2-year cycles" — prove the override actually fires
     // rather than coincidentally matching.
     const result = classifyServicesAndTerm(services, "tax-compliance", NORMAL);
-    expect(result.autoRenewal).toBe("5 years");
+    expect(result.autoRenewal).toBe("Yes, 5 years cycle");
     expect(result.autoRenewal).not.toBe(NORMAL.autoRenewal);
   });
 
-  it("Auto-Renewal is still '5 years' regardless of what the extracted cycle display says", () => {
+  it("Auto-Renewal is still 'Yes, 5 years cycle' regardless of what the extracted cycle display says", () => {
     const services = [{ name: "Monthly Tax Filing", amount: 200 }];
     const result = classifyServicesAndTerm(services, "tax-compliance", {
       ...NORMAL,
       autoRenewal: "Yes, 3-year cycles",
     });
-    expect(result.autoRenewal).toBe("5 years");
+    expect(result.autoRenewal).toBe("Yes, 5 years cycle");
   });
 });

@@ -32,7 +32,7 @@ export interface RawExtractedFields {
   /** As printed, e.g. "two (2) year periods" — parsed separately, not here. */
   autoRenewalCycleRaw: string | null;
   services: { name: string; amount: number; currency: string }[];
-  /** Paragraph(s) following any "Special Note"/"Special Rule" heading, one entry per section. Empty when absent (the normal case). */
+  /** Special Invoicing Rule text: content in the document's "Invoicing" section beyond the standard boilerplate (per-contract variable substitutions excluded). Empty when the Invoicing section matches the standard boilerplate (the normal case). */
   specialNotes: string[];
 }
 
@@ -87,7 +87,7 @@ export interface ExtractedFields {
 
   services: ServiceLine[];
   additionalInvoicingDetails: AdditionalInvoicingDetails;
-  /** Extracted "Special Note"/"Special Rule" paragraph(s), if any. Empty when none were found (the normal case). */
+  /** Special Invoicing Rule text extracted from the "Invoicing" section (content beyond the standard boilerplate), if any. Empty when the section matches the standard boilerplate (the normal case). */
   specialNotes: string[];
 
   needsReview: boolean;

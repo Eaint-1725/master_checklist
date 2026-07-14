@@ -296,10 +296,10 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="h-8 w-2 rounded-sm bg-fc-red" />
             <div>
-              <h1 className="text-xl font-semibold">Myanmar Incorporation Extractor</h1>
+              <h1 className="text-xl font-semibold">Client Master Checklist Extractor</h1>
               <p className="text-sm text-slate-300">
-                Upload a signed Incorporation Services Proposal, review the extracted data, then
-                generate an Excel checklist.
+                Upload a signed service proposal, select the template type, review the extracted
+                data, then generate an Excel checklist.
               </p>
             </div>
           </div>

@@ -3,9 +3,19 @@ import type { RawExtractedFields, ServiceLine } from "../types";
 // Shared extraction prompt/schema and service-processing logic for every
 // FocusCore proposal template. All 4 templates follow the same document
 // structure (Prepared for/by, Client Acceptance w/ signing date, "Our
-// Professional Fees" table, optional Special Note section) and differ only
-// in the services on offer — template-specific One-Time-Service/term
+// Professional Fees" table, an "Invoicing" section) and differ only in the
+// services on offer — template-specific One-Time-Service/term
 // classification happens later, in classifyServicesAndTerm.ts, not here.
+
+// The known-standard boilerplate text of the "Invoicing" section, as it
+// appears in an unmodified FocusCore proposal. Per-contract variables (the
+// due-day count, and any client-specific wording FocusCore substitutes in
+// the same slots) are expected to differ and are NOT "special". Anything
+// beyond this — extra sentences, different payment terms, added conditions
+// — is a Special Invoicing Rule.
+const STANDARD_INVOICING_TEXT = `An invoice in respect of service fees will be issued upon signing the agreement and will be due fourteen (14) days from the invoice issued date. A reimbursement note for government fees, expenses (if any) to be paid for and on behalf of the Client will be issued upon confirmation of the final amounts with the relevant authorities. FocusCore will not make any payments on behalf of the Client unless it has first been put in funds.
+
+Please note that all fees exclude associated government fees, disbursements and out-of-pocket expenses such as courier charges, also note that Myanmar Commercial Tax, currently five percent (5%) will be applicable. The Client is responsible for all tax and all applicable bank fees associated with the delivery of the service.`;
 
 function buildSchemaDescription(): string {
   return `Return ONLY a valid JSON object (no markdown, no explanation) with exactly these keys:
@@ -25,7 +35,7 @@ function buildSchemaDescription(): string {
   "services": [                                  // One entry for EVERY row in the "Our Professional Fees" table
     { "name": string, "amount": number, "currency": string }
   ],
-  "specialNotes": string[]                       // Full paragraph text of any section introduced by a bold heading reading "Special Note" or "Special Rule" (case-insensitive, with or without a trailing period/colon). This heading is NOT part of the standard template and only appears in some contract variants. One array entry per such heading, containing all paragraph text between that heading and the next heading/section break. Empty array [] if no such heading exists anywhere in the document — this is the normal, expected case, not an error.
+  "specialNotes": string[]                       // Special Invoicing Rule content — see "Special Invoicing Rule detection" below. Empty array [] when the Invoicing section matches the standard boilerplate — this is the normal, expected case, not an error.
 }
 
 Rules:
@@ -35,7 +45,20 @@ Rules:
 - signingDateRaw must be copied verbatim from the document (do not reformat or reinterpret the date yourself — a separate step handles date parsing).
 - Copy invoiceDueRaw, initialTermRaw, terminationNoticeRaw, and autoRenewalCycleRaw exactly as printed, including any word-and-parenthetical-digit form (e.g. "fourteen (14) days") — a separate step handles numeric parsing. Use null if that term is not mentioned anywhere in the document.
 - Every row of the "Our Professional Fees" table is a service the client purchased. This template does not use checkboxes or marks — do not attempt to detect selection state.
-- Do not confuse "Special Note"/"Special Rule" with any other heading (e.g. "Note:" footnotes within a table, or the standard "Background"/"Client Acceptance" sections). Only headings whose text is exactly (or almost exactly) "Special Note" or "Special Rule" count.`;
+
+Special Invoicing Rule detection (specialNotes):
+Special Invoicing Rule content is NOT a separately-headed section — it lives INSIDE the document's own section titled "Invoicing" (the section covering when/how invoices are issued and paid). To detect it:
+1. Locate the section of the document headed "Invoicing" and read its full text.
+2. Compare that text, sentence by sentence, against this KNOWN STANDARD boilerplate:
+
+"""
+${STANDARD_INVOICING_TEXT}
+"""
+
+3. Expected per-contract variable substitutions are NOT special — e.g. a different due-day count (say "thirty (30) days" instead of "fourteen (14) days"), or the client's name/details slotted into the same sentence structure. Ignore these differences.
+4. Any ADDITIONAL sentence(s) in the Invoicing section that aren't part of the standard boilerplate above, or wording that changes the actual payment terms/conditions (not just a variable substitution), is a Special Invoicing Rule. Extract that additional/different text verbatim into "specialNotes" (one array entry per such sentence or block).
+5. If the Invoicing section's text matches the standard boilerplate aside from expected variable substitutions, there is NO Special Invoicing Rule — return "specialNotes": [].
+6. Do not pull content from any other section (e.g. "Terms and conditions", "Background") into specialNotes, even if it also discusses fees or payments — only the "Invoicing" section's own text is compared.`;
 }
 
 export function buildStandardPrompt(pdfText: string, documentLabel: string): string {

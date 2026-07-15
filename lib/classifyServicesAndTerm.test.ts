@@ -137,18 +137,24 @@ describe.each(["visa-stay-permit", "audit"] as const)("classifyServicesAndTerm â
 });
 
 describe("classifyServicesAndTerm â€” tax-compliance", () => {
-  it("One-Time = Yes and term fields are '-' when a service is marked (one-time)", () => {
+  it("One-Time = No and term fields calculate normally even when a service is marked (one-time)", () => {
     const services = [{ name: "Tax Health Check (one-time)", amount: 400 }];
     const result = classifyServicesAndTerm(services, "tax-compliance", NORMAL);
-    expect(result.oneTimeService).toBe("Yes");
-    expect(result.initialTermEndDateDisplay).toBe("-");
-    expect(result.autoRenewal).toBe("-");
-    expect(result.terminationNoticePeriod).toBe("-");
+    expect(result.oneTimeService).toBe("No");
+    expect(result.initialTermEndDateDisplay).toBe(NORMAL.initialTermEndDateDisplay);
+    expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);
   });
 
   it("One-Time = No and term fields calculate normally when no service is (one-time)", () => {
     const services = [{ name: "Monthly Tax Filing", amount: 200 }];
     const result = classifyServicesAndTerm(services, "tax-compliance", NORMAL);
+    expect(result.oneTimeService).toBe("No");
+    expect(result.initialTermEndDateDisplay).toBe(NORMAL.initialTermEndDateDisplay);
+    expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);
+  });
+
+  it("One-Time = No even with an empty services list", () => {
+    const result = classifyServicesAndTerm([], "tax-compliance", NORMAL);
     expect(result.oneTimeService).toBe("No");
     expect(result.initialTermEndDateDisplay).toBe(NORMAL.initialTermEndDateDisplay);
     expect(result.terminationNoticePeriod).toBe(NORMAL.terminationNoticePeriod);

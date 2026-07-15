@@ -15,11 +15,12 @@
 // services present — One-Time Service(s) is always "Yes" and the term
 // fields are always "-".
 //
-// TAX COMPLIANCE: no baseline set. One-Time Service(s) is "Yes" iff any
-// service name contains "(one-time)"; when "No", term fields calculate
-// normally EXCEPT Auto-Renewal, which always displays "Yes, 5 years cycle"
-// regardless of the contract's actual extracted cycle (a fixed override
-// specific to this template).
+// TAX COMPLIANCE: One-Time Service(s) is always "No" (fixed override — no
+// "(one-time)" name detection for this template), so the term fields
+// (Initial Term End Date, Termination Notice Period) always calculate
+// normally from the extracted contract values. Auto-Renewal always displays
+// "Yes, 5 years cycle" regardless of the contract's actual extracted cycle
+// (a fixed override specific to this template).
 
 import type { TemplateType } from "./types";
 
@@ -109,21 +110,7 @@ function classifyAlwaysOneTime(): ServiceTermClassification {
   };
 }
 
-function classifyTaxCompliance(
-  services: ClassifiableService[],
-  extractedTerms: NormalTermFields
-): ServiceTermClassification {
-  const hasOneTime = services.some((s) => ONE_TIME_PATTERN.test(s.name));
-
-  if (hasOneTime) {
-    return {
-      oneTimeService: "Yes",
-      initialTermEndDateDisplay: NOT_APPLICABLE,
-      autoRenewal: NOT_APPLICABLE,
-      terminationNoticePeriod: NOT_APPLICABLE,
-    };
-  }
-
+function classifyTaxCompliance(extractedTerms: NormalTermFields): ServiceTermClassification {
   return {
     oneTimeService: "No",
     initialTermEndDateDisplay: extractedTerms.initialTermEndDateDisplay,
@@ -150,7 +137,7 @@ export function classifyServicesAndTerm(
     case "audit":
       return classifyAlwaysOneTime();
     case "tax-compliance":
-      return classifyTaxCompliance(services, extractedTerms);
+      return classifyTaxCompliance(extractedTerms);
     default: {
       const exhaustiveCheck: never = templateType;
       throw new Error(`Unknown template type: ${exhaustiveCheck}`);

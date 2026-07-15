@@ -125,6 +125,8 @@ export async function generateExcelChecklist(extracted: ExtractedFields): Promis
   addSectionHeader(sheet, "Financial Terms");
   addLabelValueRow(sheet, "Contract Currency", extracted.contractCurrency);
   addLabelValueRow(sheet, "Commercial Tax (5%)", extracted.commercialTax);
+  const cbmRateRow = addLabelValueRow(sheet, "CBM, Weight Average Exchange Rate per USD", "Date");
+  cbmRateRow.getCell(1).alignment = { wrapText: true, vertical: "top" };
   addLabelValueRow(sheet, "Stamp Duty Clause Applicable", extracted.stampDutyClauseApplicable);
   if (extracted.stampDutyClauseApplicable === "Yes") {
     addLabelValueRow(sheet, "Additional Stamp Duty Fees", extracted.stampDutyFee);
